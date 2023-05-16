@@ -41,13 +41,3 @@ $resources | Export-Csv $content
      Infile = $FileToUpload  
  }  
 Invoke-WebRequest -Uri $blobUploadParams.URI -Method $blobUploadParams.Method -Headers $blobUploadParams.Headers -InFile $blobUploadParams.Infile -UseBasicParsing  
-     Headers = @{  
-         'x-ms-blob-type' = "BlockBlob"  
-         'x-ms-blob-content-disposition' = "attachment; filename=`"{0}`"" -f $FileName  
-         'x-ms-meta-m1' = 'v1'  
-         'x-ms-meta-m2' = 'v2'  
-     }  
-     Body = $Content  
-     Infile = $FileToUpload  
- }  
-Invoke-WebRequest -Uri $blobUploadParams.URI -Method $blobUploadParams.Method -Headers $blobUploadParams.Headers -InFile $blobUploadParams.Infile -UseBasicParsing  
