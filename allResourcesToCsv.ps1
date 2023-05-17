@@ -1,11 +1,60 @@
+
+$automationAccount = "aa-resourceinventory"
+$UAMI = "mi-cf-operations"
+$method = "UA"
+Param(
+    [string]$resourceGroup,
+    [string]$tenant,
+    [string]$subscription,
+)
+# Ensures you do not inherit an AzContext in your runbook
+Disable-AzContextAutosave -Scope Process | Out-Null
+
+# Connect using a Managed Service Identity
 try {
-    $msg = 'Logging in to Azure...';
-    Write-Output $msg;
-	Connect-AzAccount -Identity;
-} catch {
-    Write-Error -Message $_.Exception;
-    throw $_.Exception;
-}
+        $AzureContext = (Connect-AzAccount -Identity -Tenant $tenant -SubscriptionId $subscription).context
+    }
+catch{
+        Write-Output "There is no system-assigned user identity. Aborting."; 
+        exit
+    }
+
+# set and store context
+$AzureContext = Set-AzContext -SubscriptionName $AzureContext.Subscription `
+    -DefaultProfile $AzureContext
+
+if ($method -eq "SA")
+    {
+        Write-Output "Using system-assigned managed identity"
+    }
+elseif ($method -eq "UA")
+    {
+        Write-Output "Using user-assigned managed identity"
+
+        # Connects using the Managed Service Identity of the named user-assigned managed identity
+        $identity = Get-AzUserAssignedIdentity -ResourceGroupName $resourceGroup `
+            -Name $UAMI -DefaultProfile $AzureContext
+
+        # validates assignment only, not perms
+        if ((Get-AzAutomationAccount -ResourceGroupName $resourceGroup `
+                -Name $automationAccount `
+                -DefaultProfile $AzureContext).Identity.UserAssignedIdentities.Values.PrincipalId.Contains($identity.PrincipalId))
+            {
+                $AzureContext = (Connect-AzAccount -Identity -AccountId $identity.ClientId).context
+
+                # set and store context
+                $AzureContext = Set-AzContext -SubscriptionName $AzureContext.Subscription -DefaultProfile $AzureContext
+            }
+        else {
+                Write-Output "Invalid or unassigned user-assigned managed identity"
+                exit
+            }
+    }
+else {
+        Write-Output "Invalid method. Choose UA or SA."
+        exit
+     }
+
 Select-AzSubscription -SubscriptionId 9a09c126-ca50-4406-a438-899badcf2828
 
 # Define Variables
@@ -14,7 +63,7 @@ $ReportDate = (Get-Date).ToString("yyyyMMdd")
 
 $resources = Get-AzResource
 $fileName = "resources$ReportDate.csv"
-$storeageAccount = Get-AzStorageAccount -ResourceGroupName rg-resourceinventory-eastus #| Where-Object {$_.StorageAccountName -eq 'resourceinventory'}
+$storeageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroup #| Where-Object {$_.StorageAccountName -eq 'resourceinventory'}
 
 # Set variables for the Azure Storage account and container
 $key = Get-AzStorageAccountKey -ResourceGroupName $storeageAccount.ResourceGroupName -Name $storeageAccount.StorageAccountName
