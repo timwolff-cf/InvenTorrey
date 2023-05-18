@@ -62,7 +62,7 @@ $NameOfContainer = 'resourceinventory'
 $ReportDate = (Get-Date).ToString("yyyyMMdd")
 
 $resources = Get-AzResource
-$fileName = "resources$ReportDate.csv"
+$fileName = "AllResources$ReportDate.csv"
 $storeageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroup #| Where-Object {$_.StorageAccountName -eq 'resourceinventory'}
 
 # Set variables for the Azure Storage account and container
@@ -75,7 +75,7 @@ $sasToken = New-AzStorageBlobSASToken -Container $containerName -Context $ctx -B
 
 # Set the URI for the Azure Storage Blob service
 #$uri = "https://$storageAccountName.blob.core.windows.net/$containerName/$fileName$sasToken"
-$resources | Export-Csv $content 
+$resources | Export-Csv $fileName
   
  $blobUploadParams = @{  
      URI = "https://$storageAccountName.blob.core.windows.net/$containerName/$fileName$sasToken"
@@ -86,7 +86,7 @@ $resources | Export-Csv $content
          'x-ms-meta-m1' = 'v1'  
          'x-ms-meta-m2' = 'v2'  
      }  
-     Body = $Content  
-     Infile = $FileToUpload  
+     Body = $fileName  
+     Infile = $fileName  
  }  
 Invoke-WebRequest -Uri $blobUploadParams.URI -Method $blobUploadParams.Method -Headers $blobUploadParams.Headers -InFile $blobUploadParams.Infile -UseBasicParsing  
