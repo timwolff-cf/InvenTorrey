@@ -1,18 +1,24 @@
+<#
+This runbook gathers all Azure Resources from the Get-AzResource PowerShell command and writes the output to a 
+.csv file in a blob storage container.
+#>
 
+# Define Variables
+$NameOfContainer = 'resourceinventory'
+$ReportDate = (Get-Date).ToString("yyyyMMdd")
+$fileName = "AllResources$ReportDate.csv"
 $automationAccount = "aa-resourceinventory"
 $UAMI = "mi-cf-operations"
 $method = "UA"
-Param(
-    [string]$resourceGroup,
-    [string]$tenant,
-    [string]$subscription,
-)
+$resourceGroup = "rg-cf-resourceinventory"
+
 # Ensures you do not inherit an AzContext in your runbook
 Disable-AzContextAutosave -Scope Process | Out-Null
 
 # Connect using a Managed Service Identity
 try {
-        $AzureContext = (Connect-AzAccount -Identity -Tenant $tenant -SubscriptionId $subscription).context
+        #$AzureContext = (Connect-AzAccount -Identity -Tenant $tenant -SubscriptionId $subscription).context
+        $AzureContext = (Connect-AzAccount -Identity).context
     }
 catch{
         Write-Output "There is no system-assigned user identity. Aborting."; 
@@ -55,14 +61,9 @@ else {
         exit
      }
 
-Select-AzSubscription -SubscriptionId 9a09c126-ca50-4406-a438-899badcf2828
-
-# Define Variables
-$NameOfContainer = 'resourceinventory'
-$ReportDate = (Get-Date).ToString("yyyyMMdd")
+Select-AzSubscription -SubscriptionId (Get-AzContext).Subscription.id
 
 $resources = Get-AzResource
-$fileName = "AllResources$ReportDate.csv"
 $storeageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroup #| Where-Object {$_.StorageAccountName -eq 'resourceinventory'}
 
 # Set variables for the Azure Storage account and container
